@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using NUnit.Framework.Legacy;
+using FluentAssertions;
 
 namespace HomeExercise.Tasks.ObjectComparison;
 public class ObjectComparison
@@ -14,16 +15,13 @@ public class ObjectComparison
         var expectedTsar = new Person("Ivan IV The Terrible", 54, 170, 70,
             new Person("Vasili III of Russia", 28, 170, 60, null));
 
-        // Перепишите код на использование Fluent Assertions.
-        ClassicAssert.AreEqual(actualTsar.Name, expectedTsar.Name);
-        ClassicAssert.AreEqual(actualTsar.Age, expectedTsar.Age);
-        ClassicAssert.AreEqual(actualTsar.Height, expectedTsar.Height);
-        ClassicAssert.AreEqual(actualTsar.Weight, expectedTsar.Weight);
-
-        ClassicAssert.AreEqual(expectedTsar.Parent!.Name, actualTsar.Parent!.Name);
-        ClassicAssert.AreEqual(expectedTsar.Parent.Age, actualTsar.Parent.Age);
-        ClassicAssert.AreEqual(expectedTsar.Parent.Height, actualTsar.Parent.Height);
-        ClassicAssert.AreEqual(expectedTsar.Parent.Parent, actualTsar.Parent.Parent);
+        // Преимущества решение с FluentAssertions:
+        // - Легко расширяем при добавлении новых свойств в Person 
+        // - Автоматически проверяем все свойства, включая вложенные объекты
+        // - При несовпадении конкретного свойства будет выдана информация какое именно свойство не совпало
+        actualTsar.Should().BeEquivalentTo(expectedTsar, options => options
+            .Excluding(p => p.Id) 
+            .Excluding(p => p.Parent.Id)); 
     }
 
     [Test]
@@ -34,10 +32,11 @@ public class ObjectComparison
         var expectedTsar = new Person("Ivan IV The Terrible", 54, 170, 70,
             new Person("Vasili III of Russia", 28, 170, 60, null));
 
-        // Какие недостатки у такого подхода? 
+        // Недостатки подхода с CustomEquality:
+        // - Нет детальной информации о том, какое именно свойство не совпало
+        // - При добавлении новых свойств в Person нужно менять метод AreEqual
         ClassicAssert.True(AreEqual(actualTsar, expectedTsar));
     }
-
     private bool AreEqual(Person? actual, Person? expected)
     {
         if (actual == expected) return true;
