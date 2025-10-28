@@ -7,8 +7,7 @@ public class ObjectComparison
 {
     [Test]
     [Description("Проверка текущего царя")]
-    [Category("ToRefactor")]
-    public void CheckCurrentTsar()
+    public void GetCurrentTsar_WhenComparingWithExpected_ShouldBeEquivalent()
     {
         var actualTsar = TsarRegistry.GetCurrentTsar();
 
@@ -17,11 +16,9 @@ public class ObjectComparison
 
         // Преимущества решение с FluentAssertions:
         // - Легко расширяем при добавлении новых свойств в Person 
-        // - Автоматически проверяем все свойства, включая вложенные объекты
+        // - Автоматически проверяем все свойства, включая вложенные объекты до 10 уровней вложенности (по умолчанию)
         // - При несовпадении конкретного свойства будет выдана информация какое именно свойство не совпало
-        actualTsar.Should().BeEquivalentTo(expectedTsar, options => options
-            .Excluding(p => p.Id) 
-            .Excluding(p => p.Parent.Id)); 
+        actualTsar.ShouldBeEquivalentToPerson(expectedTsar);	 
     }
 
     [Test]
@@ -35,6 +32,7 @@ public class ObjectComparison
         // Недостатки подхода с CustomEquality:
         // - Нет детальной информации о том, какое именно свойство не совпало
         // - При добавлении новых свойств в Person нужно менять метод AreEqual
+        // - Риск переполнения стека при большом уровне вложенности
         ClassicAssert.True(AreEqual(actualTsar, expectedTsar));
     }
     private bool AreEqual(Person? actual, Person? expected)
@@ -47,5 +45,17 @@ public class ObjectComparison
             && actual.Height == expected.Height
             && actual.Weight == expected.Weight
             && AreEqual(actual.Parent, expected.Parent);
+    }
+}
+
+public static class PersonAssertions
+{
+    public static void ShouldBeEquivalentToPerson(this Person actual, Person expected)
+    {
+        actual.Should().BeEquivalentTo(expected, options => options
+            .Excluding(field => 
+                field.DeclaringType == typeof(Person) &&
+                field.Name == nameof(Person.Id))
+            .AllowingInfiniteRecursion());
     }
 }
