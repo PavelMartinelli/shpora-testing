@@ -1,109 +1,92 @@
 ﻿using FluentAssertions;
 using NUnit.Framework;
-using NUnit.Framework.Legacy;
 
 namespace HomeExercise.Tasks.NumberValidator;
 
 [TestFixture]
 public class NumberValidatorTests
 {
-    [TestCase(-1, 2, true)]
-    [TestCase(0, 0, false)]
-    [TestCase(1, -1, false)]
-    [TestCase(1, 2, false)]
-    [TestCase(1, 1, false)]
-    public void Constructor_WhenInvalidArgs_Throws(int precision, int scale, bool onlyPositive)
+    [TestCase(-1, 2, true, TestName = "precision is negative")]
+    [TestCase(0, 0, false, TestName = "precision is zero")]
+    [TestCase(1, -1, false, TestName = "scale is negative")]
+    [TestCase(1, 2, false, TestName = "scale greater than precision")]
+    [TestCase(1, 1, false, TestName = "scale equals precision")]
+    public void Constructor_WhenInvalidArgs_ThrowsArgumentException(int precision, int scale, bool onlyPositive)
     {
         Action act = () => new NumberValidator(precision, scale, onlyPositive);
         act.Should().Throw<ArgumentException>();
     }
 
-    [TestCase(1, 0, true)]
-    [TestCase(2, 1, false)]
+    [TestCase(1, 0, true, TestName = "valid precision and scale")]
+    [TestCase(2, 1, false, TestName = "scale less than precision")]
     public void Constructor_WhenValidArgs_Success(int precision, int scale, bool onlyPositive)
     {
         Action act = () => new NumberValidator(precision, scale, onlyPositive);
         act.Should().NotThrow();
     }
 
-    [TestCase("0", 17, 2, true)]
-    [TestCase("0.0", 17, 2, true)]
-    [TestCase("+1.23", 4, 2, true)]
-    [TestCase("-1.23", 4, 2, false)]
-    [TestCase("123.4", 4, 1, true)]
-    [TestCase("1.2", 4, 1, true)]
-    [TestCase("12", 2, 0, true)]
-    [TestCase("11.234", 5, 4, true)]
-    [TestCase("11,234", 5, 4, true)]
-    [TestCase("1.234", 5, 3, true)]
-    public void IsValid_WhenValidNumbers_ReturnTrue(string value, int precision, int scale, bool onlyPositive)
+    [TestCase("0", 4, 2, true, TestName = "integer zero")]
+    [TestCase("0.0", 4, 2, true, TestName = "fractional zero")]
+    [TestCase("+1.23", 4, 2, true, TestName = "positive with sign")]
+    [TestCase("-1.23", 4, 2, false, TestName = "negative when allowed")]
+    [TestCase("123.4", 4, 1, true, TestName = "precision equals number length")]
+    [TestCase("11,234", 5, 4, true, TestName = "comma separator")]
+    public void IsValidNumber_WhenValidNumbers_ReturnTrue(string value, int precision, int scale, bool onlyPositive)
     {
         var validator = new NumberValidator(precision, scale, onlyPositive);
         validator.IsValidNumber(value).Should().BeTrue();
     }
 
-    [TestCase("", 1, 0, false)]
-    [TestCase(null, 1, 0, false)]
-    [TestCase("a.sd", 3, 2, true)]
-    [TestCase("00.00", 3, 2, true)]
-    [TestCase("+0.00", 3, 2, true)]
-    [TestCase("0.000", 17, 2, true)]
-    [TestCase("-1.23", 3, 2, true)]
-    [TestCase("-0.00", 3, 2, true)]
-    [TestCase("123", 2, 0, true)]
-    [TestCase("-123", 3, 0, false)]
-    [TestCase("+12.34", 4, 2, true)]
-    [TestCase("1.234", 6, 2, true)]
-    [TestCase("-123.4", 4, 1, false)]
-    [TestCase("-123.456", 10, 2, false)]
-    [TestCase("123.", 4, 2, true)]
-    [TestCase("1.23a4", 10, 7, true)]
-    [TestCase("t", 4, 3, true)]
-    [TestCase("b.0", 4, 3, true)]
-    [TestCase("1.2b34", 10, 7, true)]
-    [TestCase("12.", 10, 7, true)]
-    [TestCase("-123", 5, 2, true)]
-    [TestCase("-1.23", 5, 4, true)]
-    public void IsValid_WhenInvalidNumbers_ReturnFalse(string value, int precision, int scale, bool onlyPositive)
+    [TestCase("", 1, 0, false, TestName = "empty string")]
+    [TestCase(null, 1, 0, false, TestName = "null value")]
+    [TestCase("01.23", 3, 2, true, TestName = "leading zeros")]
+    [TestCase("+0.00", 3, 2, true, TestName = "sign with zero")]
+    [TestCase("-1.23", 3, 2, true, TestName = "negative when positive only")]
+    [TestCase("1.2a", 3, 2, true, TestName = "invalid character in fraction")]
+    [TestCase("-123", 4, 0, true, TestName = "negative integer when positive only")]
+    [TestCase("-1.23", 4, 2, true, TestName = "negative fractional when positive only")]
+    [TestCase("123.", 3, 0, true, TestName = "missing fractional part")]
+    [TestCase(".123", 4, 3, true, TestName = "missing integer part")]
+    [TestCase("++1.23", 5, 2, true, TestName = "multiple signs")]
+    [TestCase("1.2.3", 3, 2, true, TestName = "multiple separators")]
+    [TestCase("1/23", 3, 2, true, TestName = "invalid separator")]
+    public void IsValidNumber_WhenInvalidNumbers_ReturnFalse(string value, int precision, int scale, bool onlyPositive)
     {
         var validator = new NumberValidator(precision, scale, onlyPositive);
         validator.IsValidNumber(value).Should().BeFalse();
     }
 
-    [TestCase(5, 2, "-123")]
-    [TestCase(5, 4, "-1.23")]
-    [TestCase(3, 2, "-1.23")]
-    public void IsValid_WhenNegativeWhenPositiveOnly_ReturnFalse(int precision, int scale, string value)
+    [TestCase("12", 2, 0, false, TestName = "integer fits precision")]
+    [TestCase("-1", 2, 0, false, TestName = "negative integer fits precision")]
+    public void IsValidNumber_WhenIntegerBoundsValid_ReturnsTrue(string value, int precision, int scale, bool onlyPositive)
     {
-        var validator = new NumberValidator(precision, scale, true);
+        var validator = new NumberValidator(precision, scale, onlyPositive);
+        validator.IsValidNumber(value).Should().BeTrue();
+    }
+
+    [TestCase("123", 2, 1, false, TestName = "integer exceeds precision")]
+    [TestCase("-12", 2, 1, false, TestName = "negative integer exceeds precision")]
+    public void IsValidNumber_WhenIntegerBoundsInvalid_ReturnsFalse(string value, int precision, int scale, bool onlyPositive)
+    {
+        var validator = new NumberValidator(precision, scale, onlyPositive);
         validator.IsValidNumber(value).Should().BeFalse();
     }
 
-    [TestCase(2, 0, "12", true)]
-    [TestCase(2, 1, "123", false)]
-    [TestCase(3, 0, "-12", true)]
-    [TestCase(3, 1, "-123", false)]
-    public void IsValid_IntegerBounds_Expected(int precision, int scale, string value, bool expected)
+    [TestCase("12.34", 8, 4, false, TestName = "fraction fits scale")]
+    [TestCase("11.234", 5, 4, false, TestName = "fraction fits precision and scale")]
+    [TestCase("-12.3", 5, 4, false, TestName = "negative fraction fits bounds")]
+    public void IsValidNumber_WhenFractionalBoundsValid_ReturnsTrue(string value, int precision, int scale, bool onlyPositive)
     {
-        var validator = new NumberValidator(precision, scale, false);
-        validator.IsValidNumber(value).Should().Be(expected);
+        var validator = new NumberValidator(precision, scale, onlyPositive);
+        validator.IsValidNumber(value).Should().BeTrue();
     }
 
-    [TestCase(8, 4, "12.34", true)]
-    [TestCase(5, 4, "11.234", true)]
-    [TestCase(7, 3, "1.234", true)]
-    [TestCase(8, 4, "+123,4567", true)]
-    [TestCase(4, 2, "+12.34", false)]
-    [TestCase(6, 2, "1.234", false)]
-    [TestCase(5, 4, "-12.3", true)]
-    [TestCase(8, 4, "-1234.567", true)]
-    [TestCase(12, 4, "-123.4567", true)]
-    [TestCase(6, 3, "-12,345", true)]
-    [TestCase(4, 1, "-123,4", false)]
-    [TestCase(10, 2, "-123.456", false)]
-    public void IsValid_DecimalBounds_Expected(int precision, int scale, string value, bool expected)
+    [TestCase("+12.34", 4, 2, false, TestName = "signed number exceeds precision")]
+    [TestCase("1.234", 6, 2, false, TestName = "fraction exceeds scale")]
+    [TestCase("-123,4", 4, 1, false, TestName = "negative number exceeds precision")]
+    public void IsValidNumber_WhenFractionalBoundsInvalid_ReturnsFalse(string value, int precision, int scale, bool onlyPositive)
     {
-        var validator = new NumberValidator(precision, scale, false);
-        validator.IsValidNumber(value).Should().Be(expected);
+        var validator = new NumberValidator(precision, scale, onlyPositive);
+        validator.IsValidNumber(value).Should().BeFalse();
     }
 }
