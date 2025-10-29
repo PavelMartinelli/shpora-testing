@@ -6,11 +6,25 @@ namespace HomeExercise.Tasks.NumberValidator;
 [TestFixture]
 public class NumberValidatorTests
 {
-    [TestCase(-1, 2, true, TestName = "precision is negative")]
-    [TestCase(0, 0, false, TestName = "precision is zero")]
-    [TestCase(1, -1, false, TestName = "scale is negative")]
-    [TestCase(1, 2, false, TestName = "scale greater than precision")]
-    [TestCase(1, 1, false, TestName = "scale equals precision")]
+    public static IEnumerable<TestCaseData> InvalidConstructorArgsTestCases()
+    {
+        foreach (var onlyPositive in new[] { true, false })
+        {
+            yield return new TestCaseData(0, 1, onlyPositive)
+                .SetName($"precision is zero onlyPositive={onlyPositive}");
+            yield return new TestCaseData(-1, 2, onlyPositive)
+                .SetName($"precision is negative onlyPositive={onlyPositive}");
+            yield return new TestCaseData(1, -1, onlyPositive)
+                .SetName($"scale is negative onlyPositive={onlyPositive}");
+            yield return new TestCaseData(1, 2, onlyPositive)
+                .SetName($"scale greater than precision onlyPositive={onlyPositive}");
+            yield return new TestCaseData(1, 1, onlyPositive)
+                .SetName($"scale equals precision onlyPositive={onlyPositive}");
+        }
+    }
+    
+    [Test]
+    [TestCaseSource(nameof(InvalidConstructorArgsTestCases))]
     public void Constructor_WhenInvalidArgs_ThrowsArgumentException(int precision, int scale, bool onlyPositive)
     {
         Action act = () => new NumberValidator(precision, scale, onlyPositive);
@@ -27,6 +41,8 @@ public class NumberValidatorTests
 
     [TestCase("0", 4, 2, true, TestName = "integer zero")]
     [TestCase("0.0", 4, 2, true, TestName = "fractional zero")]
+    [TestCase("+0.0", 3, 2, true, TestName = "sign with zero")]
+    [TestCase("01.23", 4, 2, true, TestName = "leading zeros")]
     [TestCase("+1.23", 4, 2, true, TestName = "positive with sign")]
     [TestCase("-1.23", 4, 2, false, TestName = "negative when allowed")]
     [TestCase("123.4", 4, 1, true, TestName = "precision equals number length")]
@@ -38,13 +54,17 @@ public class NumberValidatorTests
     }
 
     [TestCase("", 1, 0, false, TestName = "empty string")]
+    [TestCase(" 123", 4, 0, true, TestName = "leading space before number")]
+    [TestCase("123 ", 4, 0, true, TestName = "trailing space after number")]
+    [TestCase(" 123 ", 5, 0, true, TestName = "spaces both sides")]
+    [TestCase("1.2\n3", 4, 2, true, TestName = "special character inside")]
+    [TestCase("\n1.23", 4, 2, true, TestName = "special character before")]
     [TestCase(null, 1, 0, false, TestName = "null value")]
-    [TestCase("01.23", 3, 2, true, TestName = "leading zeros")]
-    [TestCase("+0.00", 3, 2, true, TestName = "sign with zero")]
-    [TestCase("-1.23", 3, 2, true, TestName = "negative when positive only")]
-    [TestCase("1.2a", 3, 2, true, TestName = "invalid character in fraction")]
+    [TestCase("abc", 3, 0, true, TestName = "non-digit string")]
+    [TestCase("1a.2", 3, 2, true, TestName = "invalid character in integer part")]
+    [TestCase("1.2a", 3, 2, true, TestName = "invalid character in fraction part")]
+    [TestCase("-1.23", 4, 2, true, TestName = "negative fraction when positive only")]
     [TestCase("-123", 4, 0, true, TestName = "negative integer when positive only")]
-    [TestCase("-1.23", 4, 2, true, TestName = "negative fractional when positive only")]
     [TestCase("123.", 3, 0, true, TestName = "missing fractional part")]
     [TestCase(".123", 4, 3, true, TestName = "missing integer part")]
     [TestCase("++1.23", 5, 2, true, TestName = "multiple signs")]
@@ -64,8 +84,8 @@ public class NumberValidatorTests
         validator.IsValidNumber(value).Should().BeTrue();
     }
 
-    [TestCase("123", 2, 1, false, TestName = "integer exceeds precision")]
-    [TestCase("-12", 2, 1, false, TestName = "negative integer exceeds precision")]
+    [TestCase("123", 2, 0, false, TestName = "integer exceeds precision")]
+    [TestCase("-12", 2, 0, false, TestName = "negative integer exceeds precision")]
     public void IsValidNumber_WhenIntegerBoundsInvalid_ReturnsFalse(string value, int precision, int scale, bool onlyPositive)
     {
         var validator = new NumberValidator(precision, scale, onlyPositive);
